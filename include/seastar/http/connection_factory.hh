@@ -59,15 +59,17 @@ class tls_connection_factory : public connection_factory {
     socket_address _addr;
     shared_ptr<tls::certificate_credentials> _creds;
     sstring _host;
+    bool _wait_for_eof_on_shutdown;
 public:
-    tls_connection_factory(socket_address addr, shared_ptr<tls::certificate_credentials> creds, sstring host)
+    tls_connection_factory(socket_address addr, shared_ptr<tls::certificate_credentials> creds, sstring host, bool wait_for_eof_on_shutdown = true)
         : _addr(std::move(addr))
         , _creds(std::move(creds))
         , _host(std::move(host))
+        , _wait_for_eof_on_shutdown(wait_for_eof_on_shutdown)
     {
     }
     virtual future<connected_socket> make(abort_source* as) override {
-        return tls::connect(_creds, _addr, tls::tls_options{.server_name = _host});
+        return tls::connect(_creds, _addr, tls::tls_options{.wait_for_eof_on_shutdown = _wait_for_eof_on_shutdown, .server_name = _host});
     }
 };
 
