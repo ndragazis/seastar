@@ -41,6 +41,7 @@ module;
 #include <boost/lexical_cast.hpp>
 #include <boost/program_options.hpp>
 #include <boost/range/adaptor/map.hpp>
+#include <boost/circular_buffer.hpp>
 #include <cxxabi.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -315,6 +316,7 @@ logger::~logger() {
 }
 
 static thread_local std::array<char, 8192> static_log_buf;
+thread_local boost::circular_buffer<std::string> trace_buffer(3);
 
 bool logger::rate_limit::check() {
     const auto now = clock::now();
@@ -331,7 +333,7 @@ logger::rate_limit::rate_limit(std::chrono::milliseconds interval)
 { }
 
 void
-logger::do_log(log_level level, log_writer& writer) {
+logger::do_log(log_level level, log_writer& writer, bool is_trace_log) {
     bool is_ostream_enabled = _ostream.load(std::memory_order_relaxed);
     bool is_syslog_enabled = _syslog.load(std::memory_order_relaxed);
     if(!is_ostream_enabled && !is_syslog_enabled) {
@@ -349,6 +351,23 @@ logger::do_log(log_level level, log_writer& writer) {
     // oversized allocation warnings and failed allocation errors
     silencer be_silent;
 
+    if (is_trace_log) {
+        internal::log_buf buf(static_log_buf.data(), static_log_buf.size());
+        auto it = buf.back_insert_begin();
+        it = fmt::format_to(it, "{} ", wrapped_log_level{level});
+        it = print_timestamp(it);
+        it = print_once(it);
+        *it++ = '\n';
+        trace_buffer.push_back(std::string(buf.data(), buf.data() + buf.size()));
+        if (trace_buffer.full()) {
+            *_out << "Flushing the trace buffer\n";
+            for (const auto& log : trace_buffer) {
+                *_out << log;
+            }
+            trace_buffer.clear();
+        }
+        return;
+    }
     if (is_ostream_enabled) {
         internal::log_buf buf(static_log_buf.data(), static_log_buf.size());
         auto it = buf.back_insert_begin();

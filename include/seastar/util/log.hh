@@ -201,7 +201,7 @@ public:
 private:
 
     // We can't use an std::function<> as it potentially allocates.
-    void do_log(log_level level, log_writer& writer);
+    void do_log(log_level level, log_writer& writer, bool is_trace_log = false);
     void failed_to_log(std::exception_ptr ex,
                        fmt::string_view fmt,
                        compat::source_location loc) noexcept;
@@ -312,7 +312,7 @@ public:
                     ((it = fmt::format_to(it, ",{}", std::forward<Args>(args))), ...);
                     return it;
                 });
-                do_log(level, writer);
+                do_log(level, writer, true);
             } catch (...) {
                 failed_to_log(std::current_exception(), fmt::string_view(fmt.format), fmt.loc);
             }
