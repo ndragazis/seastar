@@ -333,16 +333,16 @@ logger::rate_limit::rate_limit(std::chrono::milliseconds interval)
 { }
 
 void logger::dump_memory_map() {
-    static bool executed_once = false;
-    if (executed_once) return;
-    executed_once = true;
-    std::ifstream maps("/proc/self/maps");
-    *_out << "\n=== BEGIN MEMORY MAP DUMP ===\n";
-    std::string line;
-    while (std::getline(maps, line)) {
-        *_out << line << "\n";
-    }
-    *_out << "=== END MEMORY MAP DUMP ===\n\n";
+    static std::once_flag once;
+    std::call_once(once, [] {
+        std::ifstream maps("/proc/self/maps");
+        *_out << "\n=== BEGIN MEMORY MAP DUMP ===\n";
+        std::string line;
+        while (std::getline(maps, line)) {
+            *_out << line << "\n";
+        }
+        *_out << "=== END MEMORY MAP DUMP ===\n\n";
+    });
 }
 
 void
