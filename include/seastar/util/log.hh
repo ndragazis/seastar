@@ -275,6 +275,11 @@ public:
         return __builtin_expect(level <= _level.load(std::memory_order_relaxed), false) && !silent;
     }
 
+    template <typename... Args>
+    void log_unformatted(format_info_t<Args...> fmt, Args&&... args) noexcept {
+
+    }
+
     /// logs to desired level if enabled, otherwise we ignore the log line
     ///
     /// \param fmt - {fmt} style format string (implictly converted to struct logger::format_info)
@@ -291,6 +296,17 @@ public:
 #else
                     return fmt::format_to(it, fmt::runtime(fmt.format), std::forward<Args>(args)...);
 #endif
+                });
+                do_log(level, writer);
+            } catch (...) {
+                failed_to_log(std::current_exception(), fmt::string_view(fmt.format), fmt.loc);
+            }
+        } else {
+            try {
+                lambda_log_writer writer([&] (internal::log_buf::inserter_iterator it) {
+                    it = fmt::format_to(it, "{}", fmt::string_view(fmt.format));
+                    ((it = fmt::format_to(it, "{}", std::forward<Args>(args))), ...);
+                    return it;
                 });
                 do_log(level, writer);
             } catch (...) {
