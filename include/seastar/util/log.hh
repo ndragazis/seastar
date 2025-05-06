@@ -304,8 +304,12 @@ public:
         } else {
             try {
                 lambda_log_writer writer([&] (internal::log_buf::inserter_iterator it) {
-                    it = fmt::format_to(it, "{}", fmt::string_view(fmt.format));
-                    ((it = fmt::format_to(it, "{}", std::forward<Args>(args))), ...);
+#ifdef SEASTAR_LOGGER_COMPILE_TIME_FMT
+                    it = fmt::format_to(it, "0x{:x}", reinterpret_cast<std::uintptr_t>(fmt::string_view(fmt.format).data()));
+#else
+                    it = fmt::format_to(it, ",{}", fmt::string_view(fmt.format));
+#endif
+                    ((it = fmt::format_to(it, ",{}", std::forward<Args>(args))), ...);
                     return it;
                 });
                 do_log(level, writer);
