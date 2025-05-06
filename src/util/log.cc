@@ -359,13 +359,6 @@ logger::do_log(log_level level, log_writer& writer, bool is_trace_log) {
         it = print_once(it);
         *it++ = '\n';
         trace_buffer.push_back(std::string(buf.data(), buf.data() + buf.size()));
-        if (trace_buffer.full()) {
-            *_out << "Flushing the trace buffer\n";
-            for (const auto& log : trace_buffer) {
-                *_out << log;
-            }
-            trace_buffer.clear();
-        }
         return;
     }
     if (is_ostream_enabled) {
@@ -397,6 +390,14 @@ logger::do_log(log_level level, log_writer& writer, bool is_trace_log) {
         //       still means the problem can happen, just less frequently).
         // syslog() interprets % characters, so send msg as a parameter
         syslog(level_map[int(level)], "%s", buf.data());
+    }
+    if (level == log_level::error) {
+        *_out << "\n=== BEGIN TRACE BUFFER DUMP ===\n";
+        for (const auto& log : trace_buffer) {
+            *_out << log;
+        }
+        *_out << "=== END TRACE BUFFER DUMP ===\n\n";
+        trace_buffer.clear();
     }
 }
 
