@@ -332,6 +332,19 @@ logger::rate_limit::rate_limit(std::chrono::milliseconds interval)
     : _interval(interval), _next(clock::now())
 { }
 
+void logger::dump_memory_map() {
+    static bool executed_once = false;
+    if (executed_once) return;
+    executed_once = true;
+    std::ifstream maps("/proc/self/maps");
+    *_out << "\n=== BEGIN MEMORY MAP DUMP ===\n";
+    std::string line;
+    while (std::getline(maps, line)) {
+        *_out << line << "\n";
+    }
+    *_out << "=== END MEMORY MAP DUMP ===\n\n";
+}
+
 void
 logger::do_log(log_level level, log_writer& writer, bool is_trace_log) {
     bool is_ostream_enabled = _ostream.load(std::memory_order_relaxed);
@@ -392,6 +405,7 @@ logger::do_log(log_level level, log_writer& writer, bool is_trace_log) {
         syslog(level_map[int(level)], "%s", buf.data());
     }
     if (level == log_level::error) {
+        dump_memory_map();
         *_out << "\n=== BEGIN TRACE BUFFER DUMP ===\n";
         for (const auto& log : trace_buffer) {
             *_out << log;

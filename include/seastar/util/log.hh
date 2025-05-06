@@ -205,6 +205,7 @@ private:
     void failed_to_log(std::exception_ptr ex,
                        fmt::string_view fmt,
                        compat::source_location loc) noexcept;
+    void dump_memory_map();
 
     class silencer {
     public:
