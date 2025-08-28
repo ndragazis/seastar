@@ -1405,7 +1405,7 @@ public:
         if (res < 0) {
             throw std::system_error(res, error_category());
         }
-        if (status & GNUTLS_CERT_INVALID) {
+        {
             auto stat_str = cert_status_to_string(gnutls_certificate_type_get(*this), status);
             auto dn = extract_dn_information();
 
@@ -1419,7 +1419,11 @@ public:
                 ss << "(Issuer=[" << dn->issuer << "], Subject=[" << dn->subject << "])";
                 stat_str = ss.str();
             }
-            throw verification_error(stat_str);
+            if (status & GNUTLS_CERT_INVALID) {
+                throw verification_error(stat_str);
+            } else {
+                std::cerr << stat_str << "\n";
+            }
         }
         if (_creds->_dn_callback) {
             // if the user registered a DN (Distinguished Name) callback
